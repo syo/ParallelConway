@@ -41,6 +41,7 @@
 
 void *threadcall(void *void_ptr) {
     printf("called thread\n");
+    pthread_exit(0);
 }
 
 /***************************************************************************/
@@ -92,22 +93,28 @@ int main(int argc, char *argv[])
         Should be relatively straightforward
         Can use this basic framework to operate, need to specialize the function to modify global variable for shared memory maybe?
     */
+    pthread_t p_threads[4];
     int val;
-    pthread_t somethread;
-    // create a thread to run function threadcall
-    if (pthread_create(&somethread, NULL, threadcall, &val)) {
-        fprintf(stderr, "Error creating thread\n");
-        return 1;
+    int num_threads = sizeof(p_threads) / sizeof(pthread_t);
+
+    //init attr
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+
+    // create however many threads calling necessary function
+    int i;
+    for (i=0; i<num_threads; i++) {
+        pthread_create(&p_threads[i], &attr, threadcall, &val);
     }
 
     //do whatever main thread needs to do
     printf("from thread 1\n");
 
-    //wait for the thread to finish and join it back in
-    if(pthread_join(somethread, NULL)) {
-        fprintf(stderr, "Error joining thread\n");
-        return 2;
+    //wait for threads to finish and join them back in
+    for (i=0; i<num_threads; i++) {
+        pthread_join(&p_threads[i], &attr, threadcall, &val);
     }
+
 
 // END -Perform a barrier and then leave MPI
     MPI_Barrier( MPI_COMM_WORLD );
