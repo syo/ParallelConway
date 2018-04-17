@@ -47,8 +47,10 @@
 int main(int argc, char *argv[])
 {
 //    int i = 0;
+    int gridsize = 16384;
     int mpi_myrank;
     int mpi_commsize;
+    double start, end;
 // Example MPI startup and using CLCG4 RNG
     MPI_Init( &argc, &argv);
     MPI_Comm_size( MPI_COMM_WORLD, &mpi_commsize);
@@ -57,6 +59,20 @@ int main(int argc, char *argv[])
 // Init 16,384 RNG streams - each rank has an independent stream
     InitDefault();
     
+    // Start timing
+    if (mpi_myrank == 0) {
+        start = MPI_Wtime();
+    }
+
+    // Allocate rank's rows and ghost rows for the boundary
+    char** rows = calloc(gridsize / mpi_commsize, sizeof(char));
+    char* rowbefore = calloc(gridsize, sizeof(char));
+    char* rowafter = calloc(gridsize, sizeof(char));
+    for (int i = 0; i < gridsize; i++) {
+        rows[i] = calloc(gridsize, sizeof(char));
+    }
+    
+//XXX
 // Note, used the mpi_myrank to select which RNG stream to use.
 // You must replace mpi_myrank with the right row being used.
 // This just show you how to call the RNG.    
