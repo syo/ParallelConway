@@ -17,7 +17,7 @@
 #include<clcg4.h>
 
 #include<mpi.h>
-
+#include<pthread.h>
 
 /***************************************************************************/
 /* Defines *****************************************************************/
@@ -39,6 +39,9 @@
 
 // You define these
 
+void *threadcall(void *void_ptr) {
+    printf("called thread\n");
+}
 
 /***************************************************************************/
 /* Function: Main **********************************************************/
@@ -82,7 +85,29 @@ int main(int argc, char *argv[])
     MPI_Barrier( MPI_COMM_WORLD );
     
 // Insert your code
-    
+
+    /* THREAD STUFF */
+    /*
+        Will need to create an array of pthread_t for each MPI rank
+        Should be relatively straightforward
+        Can use this basic framework to operate, need to specialize the function to modify global variable for shared memory maybe?
+    */
+    int val;
+    pthread_t somethread;
+    // create a thread to run function threadcall
+    if (pthread_create(&somethread, NULL, threadcall, &val)) {
+        fprintf(stderr, "Error creating thread\n");
+        return 1;
+    }
+
+    //do whatever main thread needs to do
+    printf("from thread 1\n");
+
+    //wait for the thread to finish and join it back in
+    if(pthread_join(somethread, NULL)) {
+        fprintf(stderr, "Error joining thread\n");
+        return 2;
+    }
 
 // END -Perform a barrier and then leave MPI
     MPI_Barrier( MPI_COMM_WORLD );
