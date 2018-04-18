@@ -26,6 +26,7 @@
 #define ALIVE 1
 #define DEAD  0
 #define THRESHOLD 25
+#define THREADS 4
 
 /***************************************************************************/
 /* Global Vars *************************************************************/
@@ -36,15 +37,17 @@ int numticks = 128;
 int mpi_myrank;
 int mpi_commsize;
 int rowsperrank;
+int rowsperthread;
 char** rows;
 char* rowbefore;
 char* rowafter;
+pthread_mutex_t gridlock;
 
 /***************************************************************************/
 /* Function Decs ***********************************************************/
 /***************************************************************************/
 
-void *threadcall(void *void_ptr) {
+void *threadcall(void *val_ptr) {
     printf("called thread\n");
     // Overall for loop
     for (int i = 0; i < numticks; i++) {
@@ -67,6 +70,42 @@ void *threadcall(void *void_ptr) {
             MPI_Status status;
             MPI_Wait(&recv, &status);
             MPI_Wait(&send, &status);
+        }
+
+        // process each row belonging to this pthread
+        // should pass in what belongs to it as an argument to threadcall
+        // use modulus to calculate positions
+        int cur_row = *((int *) val_ptr);
+        int j;
+        for (j=0; j<rowsperthread; j++) {
+            int lock_status = pthread_mutex_trylock(&gridlock);
+            if (lock_status == EBUSY) {
+                // if mutex is locked just try this row again until it isn't
+                j -= 1;
+                continue;
+            }
+            else {
+                // write new values for the rows
+                // need to possibly calculate beforehand so updates don't change outcomes of other threads?
+
+                //calculate each new value in the row
+                int k;
+                for (k=0; k < gridsize; k++) {
+                    int life_status = rows[cur_row + j][k];
+                    int neighbors = 0; // XXX need to calc this
+                    if (life_status) {
+                        //if alive
+                        if (neighbors < 2 || neighbors > 3) {// if not 2 or 3 neighbors
+                            rows[cur_row + j][k] = 0; //kill it
+                        }
+                    } else {
+                        // if dead
+                        if (neighbors == 3) { //if exactly 3 neighbors
+                            rows[cur_row + j][k] = 1; //bring it to life
+                        }
+                    }
+                }
+            }
         }
     }
     pthread_exit(0);
@@ -91,7 +130,11 @@ int main(int argc, char *argv[])
     MPI_Comm_size( MPI_COMM_WORLD, &mpi_commsize);
     MPI_Comm_rank( MPI_COMM_WORLD, &mpi_myrank);
     rowsperrank = gridsize / mpi_commsize;
-    
+    rowsperthread = rowsperrank / THREADS;
+
+    //init grid mutex
+    pthread_mutex_init(&gridlock);
+
     // Init 16,384 RNG streams - each rank has an independent stream
     InitDefault();
     
@@ -136,22 +179,26 @@ int main(int argc, char *argv[])
         Should be relatively straightforward
         Can use this basic framework to operate, need to specialize the function to modify global variable for shared memory maybe?
     */
-    pthread_t p_threads[4];
-    int val;
+
+    // each rank intiializes an array of pthreads
+    pthread_t p_threads[THREADS];
+    int currow = (mpi_myrank + gridsize - 1) % gridsize + 1;//find out where this mpi rank sits in the grid
     int num_threads = sizeof(p_threads) / sizeof(pthread_t);
 
     //init attr
     pthread_attr_t attr;
     pthread_attr_init(&attr);
 
-    // create however many threads calling necessary function
+    // create the threads calling the threadcall function
     int i;
     for (i=0; i<num_threads; i++) {
-        pthread_create(&p_threads[i], &attr, threadcall, &val);
+        int val = currow; //pass it the current row as the beginning of this thread's rows
+        pthread_create(&p_threads[i], &attr, threadcall, (void *) &val);
+        currow += rowsperthread; //increment current row by number of rows per thread
     }
 
     //do whatever main thread needs to do
-    printf("from thread 1\n");
+    printf("this is the main thread\n");
 
     //wait for threads to finish and join them back in
     for (i=0; i<num_threads; i++) {
