@@ -77,7 +77,7 @@ void *threadcall(void *val_ptr) {
         // use modulus to calculate positions
         int cur_row = *((int *) val_ptr);
         int j;
-        for (j=0; j<rowsperthread; j++) {
+        for (j=0; j<rowsperthread; j++) {//iterate through each row in the thread
             int lock_status = pthread_mutex_trylock(&gridlock);
             if (lock_status == EBUSY) {
                 // if mutex is locked just try this row again until it isn't
@@ -90,9 +90,25 @@ void *threadcall(void *val_ptr) {
 
                 //calculate each new value in the row
                 int k;
-                for (k=0; k < gridsize; k++) {
+                for (k=0; k < gridsize; k++) {//for item in row
                     int life_status = rows[cur_row + j][k];
                     int neighbors = 0; // XXX need to calc this
+                    if (k > 0)//check to the left
+                        neighbors += rows[cur_row + j][k - 1]
+                    if (k < gridsize - 1)//check to the right
+                        neighbors += rows[cur_row + j][k + 1]
+                    if (j > 0) { //if this is not the first row of the thread
+                        //check above
+                    } else { //if this is the first row of the thread
+                        //check if its the first thread of mpi rank
+                        //ask for the ghost row or thread above's row
+                    }
+                    if (j < rowsperthread) { //if this is not the last row of the thread
+                        //check below 
+                    } else { //if this is the last row of the thread
+                        //check if its the last thread of the rank
+                        //ask for the row below
+                    }
                     if (life_status) {
                         //if alive
                         if (neighbors < 2 || neighbors > 3) {// if not 2 or 3 neighbors
@@ -105,6 +121,7 @@ void *threadcall(void *val_ptr) {
                         }
                     }
                 }
+                pthread_mutex_unlock(&gridlock);
             }
         }
     }
