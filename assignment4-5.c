@@ -154,7 +154,6 @@ int main(int argc, char *argv[])
     // Randomly initialize universe
     for (int i = 0; i < rowsperrank; i++) {
         for (int j = 0; j < gridsize; j++) {
-            // XXX not sure how to initialize the grid
             if (GenVal(i) < 0.5) {
                 rows[i][j] = DEAD;
             } else {
