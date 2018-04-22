@@ -99,15 +99,39 @@ void *threadcall(void *val_ptr) {
                         neighbors += rows[cur_row + j][k + 1]
                     if (j > 0) { //if this is not the first row of the thread
                         //check above
+                        neighbors += rows[cur_row + j - 1][k - 1];
+                        neighbors += rows[cur_row + j - 1][k];
+                        neighbors += rows[cur_row + j - 1][k + 1];
                     } else { //if this is the first row of the thread
-                        //check if its the first thread of mpi rank
-                        //ask for the ghost row or thread above's row
+                        if (cur_row == 0) {//check if its the first thread of mpi rank
+                            //ask for the ghost row info
+                            neighbors += rowbefore[k - 1]; 
+                            neighbors += rowbefore[k]; 
+                            neighbors += rowbefore[k + 1]; 
+                        } else {
+                            //ask for the thread above's row XXX may be doing this wrong
+                            neighbors += rows[cur_row + j - 1][k - 1];
+                            neighbors += rows[cur_row + j - 1][k];
+                            neighbors += rows[cur_row + j - 1][k + 1];
+                        }
                     }
                     if (j < rowsperthread) { //if this is not the last row of the thread
                         //check below 
+                        neighbors += rows[cur_row + j + 1][k - 1];
+                        neighbors += rows[cur_row + j + 1][k];
+                        neighbors += rows[cur_row + j + 1][k + 1];
                     } else { //if this is the last row of the thread
-                        //check if its the last thread of the rank
-                        //ask for the row below
+                        if (cur_row / THREADS + 1 == rowsperthread) {//check if its the last thread of mpi rank
+                            //ask for the ghost row info
+                            neighbors += rowafter[k - 1]; 
+                            neighbors += rowafter[k]; 
+                            neighbors += rowafter[k + 1]; 
+                        } else {
+                            //ask for the thread below's row XXX may be doing this wrong
+                            neighbors += rows[cur_row + j + 1][k - 1];
+                            neighbors += rows[cur_row + j + 1][k];
+                            neighbors += rows[cur_row + j + 1][k + 1];
+                        }
                     }
                     if (life_status) {
                         //if alive
@@ -161,7 +185,7 @@ int main(int argc, char *argv[])
     }
 
     // Allocate rank's rows and ghost rows for the boundary
-    rows = calloc(rewsperrank, sizeof(char));
+    rows = calloc(rowsperrank, sizeof(char));
     rowbefore = calloc(gridsize, sizeof(char));
     rowafter = calloc(gridsize, sizeof(char));
     for (int i = 0; i < gridsize; i++) {
@@ -198,7 +222,7 @@ int main(int argc, char *argv[])
 
     // each rank intiializes an array of pthreads
     pthread_t p_threads[THREADS];
-    int currow = (mpi_myrank + gridsize - 1) % gridsize + 1;//find out where this mpi rank sits in the grid
+    int currow = 0; //start with the first row of the rank
     int num_threads = sizeof(p_threads) / sizeof(pthread_t);
 
     //init attr
