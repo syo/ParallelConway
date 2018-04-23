@@ -95,10 +95,12 @@ void *threadcall(void *val_ptr) {
                 for (k=0; k < gridsize; k++) {//for item in row
                     int life_status = rows[cur_row + j][k];
                     int neighbors = 0; // XXX need to calc this
-                    if (k > 0)//check to the left
-                        neighbors += rows[cur_row + j][k - 1]
-                    if (k < gridsize - 1)//check to the right
-                        neighbors += rows[cur_row + j][k + 1]
+                    if (k > 0) {//check to the left
+                        neighbors += rows[cur_row + j][k - 1];
+                    }
+                    if (k < gridsize - 1) {//check to the right
+                        neighbors += rows[cur_row + j][k + 1];
+                    }
                     if (j > 0) { //if this is not the first row of the thread
                         //check above
                         neighbors += rows[cur_row + j - 1][k - 1];
@@ -176,10 +178,10 @@ int main(int argc, char *argv[])
     rowsperthread = rowsperrank / THREADS;
 
     //init grid mutex
-    pthread_mutex_init(&gridlock);
+    pthread_mutex_init(&gridlock, NULL);
 
     //init threadzero mutex
-    pthread_mutex_init(&threadzero);
+    pthread_mutex_init(&threadzero, NULL);
 
     // Init 16,384 RNG streams - each rank has an independent stream
     InitDefault();
@@ -247,7 +249,7 @@ int main(int argc, char *argv[])
 
     //wait for threads to finish and join them back in
     for (i=0; i<num_threads; i++) {
-        pthread_join(&p_threads[i], &attr, threadcall, &val);
+        pthread_join(p_threads[i], NULL);
     }
 
     // Sync after threads end
