@@ -171,6 +171,7 @@ int main(int argc, char *argv[])
 //    int i = 0;
     double start, end, comptime, iotime;
 // Example MPI startup and using CLCG4 RNG
+    printf("running program\n");
     MPI_Init( &argc, &argv);
     MPI_Comm_size( MPI_COMM_WORLD, &mpi_commsize);
     MPI_Comm_rank( MPI_COMM_WORLD, &mpi_myrank);
@@ -188,6 +189,7 @@ int main(int argc, char *argv[])
     
     // Start timing
     if (mpi_myrank == 0) {
+        printf("starting timer\n");
         start = MPI_Wtime();
     }
 
@@ -199,6 +201,7 @@ int main(int argc, char *argv[])
         rows[i] = calloc(gridsize, sizeof(char));
     }
 
+    printf("rows allocated, initializing\n");
     // Randomly initialize universe
     for (int i = 0; i < rowsperrank; i++) {
         for (int j = 0; j < gridsize; j++) {
@@ -210,6 +213,7 @@ int main(int argc, char *argv[])
         }
     }
     
+    printf("initialized\n");
 //XXX
 // Note, used the mpi_myrank to select which RNG stream to use.
 // You must replace mpi_myrank with the right row being used.
