@@ -276,11 +276,11 @@ int main(int argc, char *argv[])
         MPI_File_write_at(outfile, (mpi_myrank * rowsperrank + i + 1) * (gridsize + 1) - 1, &newline, 1, MPI_CHAR, &status);
     }
     MPI_Barrier( MPI_COMM_WORLD );
-    MPI_File_close(outfile);
+    MPI_File_close(&outfile);
 
     if (mpi_myrank == 0) {
         // End of I/O timing
-        end = MPI_Wtime;
+        end = MPI_Wtime();
         iotime = end - start;
 
         printf("Compute time: %lfs, I/O time: %lfs\n", comptime, iotime);
