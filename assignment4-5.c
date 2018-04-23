@@ -271,7 +271,7 @@ int main(int argc, char *argv[])
         MPI_File_write_at(outfile, (mpi_myrank * rowsperrank + i) * (gridsize + 1), rows[i], gridsize, MPI_CHAR, &status);
         // Add newline at the end of each line
         char newline = '\n';
-        MPI_File_write_at(outfile, (mpi_myrank * rowsperrank + i + 1) * (gridsize + 1) - 1, 1, &newline, MPI_CHAR, &status);
+        MPI_File_write_at(outfile, (mpi_myrank * rowsperrank + i + 1) * (gridsize + 1) - 1, &newline, 1, MPI_CHAR, &status);
     }
     MPI_Barrier( MPI_COMM_WORLD );
     MPI_File_close(outfile);
