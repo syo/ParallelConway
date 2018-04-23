@@ -42,6 +42,7 @@ char** rows;
 char* rowbefore;
 char* rowafter;
 pthread_mutex_t gridlock;
+pthread_mutex_t threadzero;
 
 /***************************************************************************/
 /* Function Decs ***********************************************************/
@@ -49,11 +50,12 @@ pthread_mutex_t gridlock;
 
 void *threadcall(void *val_ptr) {
     printf("called thread\n");
+    int base_thread = pthread_mutex_trylock(&threadzero); //use a mutex to make sure only one thread does mpi things
+
     // Overall for loop
     for (int i = 0; i < numticks; i++) {
         // MPI send and receive
-        //XXX not sure how to get "thread 0" -- pthread_self() is a thing though
-        if (thread is 0) {
+        if (base_thread == 0) {
             // Recieve the row before and after
             MPI_Request recv;
             MPI_Request send;
@@ -176,6 +178,9 @@ int main(int argc, char *argv[])
     //init grid mutex
     pthread_mutex_init(&gridlock);
 
+    //init threadzero mutex
+    pthread_mutex_init(&threadzero);
+
     // Init 16,384 RNG streams - each rank has an independent stream
     InitDefault();
     
@@ -238,7 +243,7 @@ int main(int argc, char *argv[])
     }
 
     //do whatever main thread needs to do
-    printf("this is the main thread\n");
+    //printf("this is the main thread\n");
 
     //wait for threads to finish and join them back in
     for (i=0; i<num_threads; i++) {
