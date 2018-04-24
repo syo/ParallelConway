@@ -49,11 +49,13 @@ pthread_mutex_t threadzero;
 /***************************************************************************/
 
 void *threadcall(void *val_ptr) {
-    printf("called thread\n");
+    //printf("called thread\n");
     int base_thread = pthread_mutex_trylock(&threadzero); //use a mutex to make sure only one thread does mpi things
-
+    //if (base_thread == 0)
+    //    printf("this should show up 4 times\n"); 
     // Overall for loop
     for (int i = 0; i < numticks; i++) {
+        //printf("TICK %d\n", i);
         // MPI send and receive
         if (base_thread == 0) {
             // Recieve the row before and after
@@ -80,78 +82,79 @@ void *threadcall(void *val_ptr) {
         int cur_row = *((int *) val_ptr);
         int j;
         for (j=0; j<rowsperthread; j++) {//iterate through each row in the thread
-            int lock_status = pthread_mutex_trylock(&gridlock);
-            if (lock_status == EBUSY) {
-                // if mutex is locked just try this row again until it isn't
-                j -= 1;
-                continue;
+            int lock_status = pthread_mutex_trylock(&gridlock);//if we can get the mutex, process a row
+            while (lock_status == EBUSY) {
+                // if mutex is locked just wait for it
+                lock_status = pthread_mutex_trylock(&gridlock);
             }
-            else {
-                // write new values for the rows
-                // need to possibly calculate beforehand so updates don't change outcomes of other threads?
+            //printf("LOCKED MUTEX\n");
+            // write new values for the rows
+            // need to possibly calculate beforehand so updates don't change outcomes of other threads?
 
-                //calculate each new value in the row
-                int k;
-                for (k=0; k < gridsize; k++) {//for item in row
-                    int life_status = rows[cur_row + j][k];
-                    int neighbors = 0; // XXX need to calc this
-                    if (k > 0) {//check to the left
-                        neighbors += rows[cur_row + j][k - 1];
-                    }
-                    if (k < gridsize - 1) {//check to the right
-                        neighbors += rows[cur_row + j][k + 1];
-                    }
-                    if (j > 0) { //if this is not the first row of the thread
-                        //check above
+            //calculate each new value in the row
+            int k;
+            for (k=0; k < gridsize; k++) {//for item in row
+                //printf("infinite? %d\n", k);
+                int life_status = rows[cur_row + j][k];
+                int neighbors = 0; // XXX need to calc this
+                if (k > 0) {//check to the left
+                    neighbors += rows[cur_row + j][k - 1];
+                }
+                if (k < gridsize - 1) {//check to the right
+                    neighbors += rows[cur_row + j][k + 1];
+                }
+                if (j > 0) { //if this is not the first row of the thread
+                    //check above
+                    neighbors += rows[cur_row + j - 1][k - 1];
+                    neighbors += rows[cur_row + j - 1][k];
+                    neighbors += rows[cur_row + j - 1][k + 1];
+                } else { //if this is the first row of the thread
+                    if (cur_row == 0) {//check if its the first thread of mpi rank
+                        //ask for the ghost row info
+                        neighbors += rowbefore[k - 1]; 
+                        neighbors += rowbefore[k]; 
+                        neighbors += rowbefore[k + 1]; 
+                    } else {
+                        //ask for the thread above's row XXX may be doing this wrong
                         neighbors += rows[cur_row + j - 1][k - 1];
                         neighbors += rows[cur_row + j - 1][k];
                         neighbors += rows[cur_row + j - 1][k + 1];
-                    } else { //if this is the first row of the thread
-                        if (cur_row == 0) {//check if its the first thread of mpi rank
-                            //ask for the ghost row info
-                            neighbors += rowbefore[k - 1]; 
-                            neighbors += rowbefore[k]; 
-                            neighbors += rowbefore[k + 1]; 
-                        } else {
-                            //ask for the thread above's row XXX may be doing this wrong
-                            neighbors += rows[cur_row + j - 1][k - 1];
-                            neighbors += rows[cur_row + j - 1][k];
-                            neighbors += rows[cur_row + j - 1][k + 1];
-                        }
                     }
-                    if (j < rowsperthread) { //if this is not the last row of the thread
-                        //check below 
+                }
+                if (j < rowsperthread) { //if this is not the last row of the thread
+                    //check below 
+                    neighbors += rows[cur_row + j + 1][k - 1];
+                    neighbors += rows[cur_row + j + 1][k];
+                    neighbors += rows[cur_row + j + 1][k + 1];
+                } else { //if this is the last row of the thread
+                    if (cur_row / THREADS + 1 == rowsperthread) {//check if its the last thread of mpi rank
+                        //ask for the ghost row info
+                        neighbors += rowafter[k - 1]; 
+                        neighbors += rowafter[k]; 
+                        neighbors += rowafter[k + 1]; 
+                    } else {
+                        //ask for the thread below's row XXX may be doing this wrong
                         neighbors += rows[cur_row + j + 1][k - 1];
                         neighbors += rows[cur_row + j + 1][k];
                         neighbors += rows[cur_row + j + 1][k + 1];
-                    } else { //if this is the last row of the thread
-                        if (cur_row / THREADS + 1 == rowsperthread) {//check if its the last thread of mpi rank
-                            //ask for the ghost row info
-                            neighbors += rowafter[k - 1]; 
-                            neighbors += rowafter[k]; 
-                            neighbors += rowafter[k + 1]; 
-                        } else {
-                            //ask for the thread below's row XXX may be doing this wrong
-                            neighbors += rows[cur_row + j + 1][k - 1];
-                            neighbors += rows[cur_row + j + 1][k];
-                            neighbors += rows[cur_row + j + 1][k + 1];
-                        }
-                    }
-                    if (life_status) {
-                        //if alive
-                        if (neighbors < 2 || neighbors > 3) {// if not 2 or 3 neighbors
-                            rows[cur_row + j][k] = 0; //kill it
-                        }
-                    } else {
-                        // if dead
-                        if (neighbors == 3) { //if exactly 3 neighbors
-                            rows[cur_row + j][k] = 1; //bring it to life
-                        }
                     }
                 }
-                pthread_mutex_unlock(&gridlock);
+                if (life_status) {
+                    //if alive
+                    if (neighbors < 2 || neighbors > 3) {// if not 2 or 3 neighbors
+                        rows[cur_row + j][k] = 0; //kill it
+                    }
+                } else {
+                    // if dead
+                    if (neighbors == 3) { //if exactly 3 neighbors
+                        rows[cur_row + j][k] = 1; //bring it to life
+                    }
+                }
             }
+            //printf("UNLOCKED MUTEX\n");
+            pthread_mutex_unlock(&gridlock);
         }
+        //printf("updated rows in thread\n");
     }
     printf("end of for loop\n");
     pthread_exit(0);
@@ -254,7 +257,9 @@ int main(int argc, char *argv[])
 
     //wait for threads to finish and join them back in
     for (i=0; i<num_threads; i++) {
+        printf("trying to join thread %d\n", i);
         pthread_join(p_threads[i], NULL);
+        printf("joined thread %d on rank %d\n", i, mpi_myrank);
     }
     printf("End of threads\n");
 
