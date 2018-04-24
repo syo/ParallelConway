@@ -43,6 +43,7 @@ char* rowbefore;
 char* rowafter;
 pthread_mutex_t gridlock;
 pthread_mutex_t threadzero;
+pthread_barrier_t mpi_io;
 
 /***************************************************************************/
 /* Function Decs ***********************************************************/
@@ -79,6 +80,8 @@ void *threadcall(void *val_ptr) {
             printf("finished send and received at TICK %d\n", i);
         }
 
+        pthread_barrier_wait(&mpi_io);
+        
         // process each row belonging to this pthread
         // should pass in what belongs to it as an argument to threadcall
         // use modulus to calculate positions
@@ -190,6 +193,9 @@ int main(int argc, char *argv[])
 
     //init threadzero mutex
     pthread_mutex_init(&threadzero, NULL);
+
+    //init pthread barrier
+    pthread_barrier_init(&mpi_io, NULL, THREADS);
 
     // Init 16,384 RNG streams - each rank has an independent stream
     InitDefault();
