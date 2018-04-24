@@ -59,7 +59,7 @@ void *threadcall(void *val_ptr) {
         //printf("TICK %d\n", i);
         // MPI send and receive
         if (base_thread == 0) {
-            printf("started send and received at TICK %d\n", i);
+            //printf("started send and received at TICK %d\n", i);
             // Recieve the row before and after
             MPI_Request recva, recvb, senda, sendb;
             int before = (mpi_myrank + mpi_commsize - 1) % mpi_commsize;
@@ -100,59 +100,59 @@ void *threadcall(void *val_ptr) {
             int k;
             for (k=0; k < gridsize; k++) {//for item in row
                 //printf("infinite? %d\n", k);
-                int life_status = rows[cur_row + j][k];
+                int life_status = rows[cur_row + j][k] - '0';
                 int neighbors = 0; // XXX need to calc this
                 if (k > 0) {//check to the left
-                    neighbors += rows[cur_row + j][k - 1];
+                    neighbors += rows[cur_row + j][k - 1] - '0';
                 }
                 if (k < gridsize - 1) {//check to the right
-                    neighbors += rows[cur_row + j][k + 1];
+                    neighbors += rows[cur_row + j][k + 1] - '0';
                 }
                 if (j > 0) { //if this is not the first row of the thread
                     //check above
-                    neighbors += rows[cur_row + j - 1][k - 1];
-                    neighbors += rows[cur_row + j - 1][k];
-                    neighbors += rows[cur_row + j - 1][k + 1];
+                    neighbors += rows[cur_row + j - 1][k - 1] - '0';
+                    neighbors += rows[cur_row + j - 1][k] - '0';
+                    neighbors += rows[cur_row + j - 1][k + 1] - '0';
                 } else { //if this is the first row of the thread
                     if (cur_row == 0) {//check if its the first thread of mpi rank
                         //ask for the ghost row info
-                        neighbors += rowbefore[k - 1]; 
-                        neighbors += rowbefore[k]; 
-                        neighbors += rowbefore[k + 1]; 
+                        neighbors += rowbefore[k - 1] - '0'; 
+                        neighbors += rowbefore[k] - '0'; 
+                        neighbors += rowbefore[k + 1] - '0'; 
                     } else {
                         //ask for the thread above's row XXX may be doing this wrong
-                        neighbors += rows[cur_row + j - 1][k - 1];
-                        neighbors += rows[cur_row + j - 1][k];
-                        neighbors += rows[cur_row + j - 1][k + 1];
+                        neighbors += rows[cur_row + j - 1][k - 1] - '0';
+                        neighbors += rows[cur_row + j - 1][k] - '0';
+                        neighbors += rows[cur_row + j - 1][k + 1] - '0';
                     }
                 }
                 if (j < rowsperthread) { //if this is not the last row of the thread
                     //check below 
-                    neighbors += rows[cur_row + j + 1][k - 1];
-                    neighbors += rows[cur_row + j + 1][k];
-                    neighbors += rows[cur_row + j + 1][k + 1];
+                    neighbors += rows[cur_row + j + 1][k - 1] - '0';
+                    neighbors += rows[cur_row + j + 1][k] - '0';
+                    neighbors += rows[cur_row + j + 1][k + 1] - '0';
                 } else { //if this is the last row of the thread
                     if (cur_row / THREADS + 1 == rowsperthread) {//check if its the last thread of mpi rank
                         //ask for the ghost row info
-                        neighbors += rowafter[k - 1]; 
-                        neighbors += rowafter[k]; 
-                        neighbors += rowafter[k + 1]; 
+                        neighbors += rowafter[k - 1] - '0'; 
+                        neighbors += rowafter[k] - '0'; 
+                        neighbors += rowafter[k + 1] - '0'; 
                     } else {
                         //ask for the thread below's row XXX may be doing this wrong
-                        neighbors += rows[cur_row + j + 1][k - 1];
-                        neighbors += rows[cur_row + j + 1][k];
-                        neighbors += rows[cur_row + j + 1][k + 1];
+                        neighbors += rows[cur_row + j + 1][k - 1] - '0';
+                        neighbors += rows[cur_row + j + 1][k] - '0';
+                        neighbors += rows[cur_row + j + 1][k + 1] - '0';
                     }
                 }
                 if (life_status) {
                     //if alive
                     if (neighbors < 2 || neighbors > 3) {// if not 2 or 3 neighbors
-                        rows[cur_row + j][k] = 0; //kill it
+                        rows[cur_row + j][k] = '0'; //kill it
                     }
                 } else {
                     // if dead
                     if (neighbors == 3) { //if exactly 3 neighbors
-                        rows[cur_row + j][k] = 1; //bring it to life
+                        rows[cur_row + j][k] = '1'; //bring it to life
                     }
                 }
             }
@@ -205,12 +205,17 @@ int main(int argc, char *argv[])
     }
 
     // Allocate rank's rows and ghost rows for the boundary
-    rows = calloc(rowsperrank, sizeof(char*));
-    rowbefore = calloc(gridsize, sizeof(char));
-    rowafter = calloc(gridsize, sizeof(char));
+    rows = calloc(rowsperrank + 1, sizeof(char*));
+    rowbefore = calloc(gridsize + 1, sizeof(char));
+    rowafter = calloc(gridsize + 1, sizeof(char));
     for (int i = 0; i < gridsize; i++) {
-        rows[i] = calloc(gridsize, sizeof(char));
+        rows[i] = calloc(gridsize + 1, sizeof(char));
+        rows[i][gridsize] = '\0';
     }
+
+    //rows[gridsize] = '\0';
+    rowafter[gridsize] = '\0';
+    rowbefore[gridsize] = '\0';
 
     printf("rows allocated, initializing\n");
     // Randomly initialize universe
@@ -302,9 +307,10 @@ int main(int argc, char *argv[])
     }
 
 
-    printf("rows at %p points to: %p\n", (void*)&rows, (void*)rows);
+    /*printf("rank %d rows at %p points to: %p\n", mpi_myrank, (void*)&rows, (void*)rows);
     // Clean up environment
     for (int i = 0; i < rowsperrank; i++) {
+        //printf("trying to free row %d\n", i);
         free(rows[i]);
     }
     printf("freed each row\n");
@@ -313,8 +319,8 @@ int main(int argc, char *argv[])
     free(rowbefore);
     printf("freed rowbefore\n");
     free(rowafter);
-    printf("freed rowafter\n");
-    MPI_Finalize();
+    printf("freed rowafter\n");*/
+    //MPI_Finalize();
     return 0;
 }
 
