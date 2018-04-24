@@ -61,21 +61,23 @@ void *threadcall(void *val_ptr) {
         if (base_thread == 0) {
             printf("started send and received at TICK %d\n", i);
             // Recieve the row before and after
-            MPI_Request recv;
-            MPI_Request send;
+            MPI_Request recva, recvb, senda, sendb;
             int before = (mpi_myrank + mpi_commsize - 1) % mpi_commsize;
             int after = (mpi_myrank + 1) % mpi_commsize;
-            MPI_Irecv(rowbefore, gridsize, MPI_CHAR, before, 123, MPI_COMM_WORLD, &recv);
-            MPI_Irecv(rowafter, gridsize, MPI_CHAR, after, 321, MPI_COMM_WORLD, &recv);
+            MPI_Irecv(rowbefore, gridsize, MPI_CHAR, before, 123, MPI_COMM_WORLD, &recvb);
+            MPI_Irecv(rowafter, gridsize, MPI_CHAR, after, 321, MPI_COMM_WORLD, &recva);
 
             // Send the first and last rows to neighbors
-            MPI_Isend(rows[0], gridsize, MPI_CHAR, before, 321, MPI_COMM_WORLD, &send);
-            MPI_Irecv(rows[rowsperrank-1], gridsize, MPI_CHAR, after, 123, MPI_COMM_WORLD, &send);
+            MPI_Isend(rows[0], gridsize, MPI_CHAR, before, 321, MPI_COMM_WORLD, &sendb);
+            MPI_Isend(rows[rowsperrank-1], gridsize, MPI_CHAR, after, 123, MPI_COMM_WORLD, &senda);
 
             // Wait for send and receive to finish
             MPI_Status status;
-            MPI_Wait(&recv, &status);
-            MPI_Wait(&send, &status);
+            MPI_Wait(&recvb, &status);
+            MPI_Wait(&recva, &status);
+            printf("finished receive at TICK %d\n", i);
+            MPI_Wait(&sendb, &status);
+            MPI_Wait(&senda, &status);
 
             printf("finished send and received at TICK %d\n", i);
         }
