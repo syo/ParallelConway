@@ -33,7 +33,7 @@
 /***************************************************************************/
 
 int gridsize = 16384;
-int numticks = 128;
+int numticks = 4;
 int mpi_myrank;
 int mpi_commsize;
 int rowsperrank;
@@ -153,6 +153,7 @@ void *threadcall(void *val_ptr) {
             }
         }
     }
+    printf("end of for loop\n");
     pthread_exit(0);
 }
 
@@ -255,6 +256,7 @@ int main(int argc, char *argv[])
     for (i=0; i<num_threads; i++) {
         pthread_join(p_threads[i], NULL);
     }
+    printf("End of threads\n");
 
     // Sync after threads end
     MPI_Barrier( MPI_COMM_WORLD );
