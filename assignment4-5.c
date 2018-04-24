@@ -75,11 +75,8 @@ void *threadcall(void *val_ptr) {
             MPI_Status status;
             MPI_Wait(&recvb, &status);
             MPI_Wait(&recva, &status);
-            printf("finished receive at TICK %d\n", i);
             MPI_Wait(&sendb, &status);
             MPI_Wait(&senda, &status);
-
-            printf("finished send and received at TICK %d\n", i);
         }
 
         pthread_barrier_wait(&mpi_io);
@@ -164,7 +161,6 @@ void *threadcall(void *val_ptr) {
         }
         //printf("updated rows in thread\n");
     }
-    printf("end of for loop\n");
     pthread_exit(0);
 }
 
@@ -268,11 +264,8 @@ int main(int argc, char *argv[])
 
     //wait for threads to finish and join them back in
     for (i=0; i<num_threads; i++) {
-        printf("trying to join thread %d\n", i);
         pthread_join(p_threads[i], NULL);
-        printf("joined thread %d on rank %d\n", i, mpi_myrank);
     }
-    printf("End of threads\n");
 
     // Sync after threads end
     MPI_Barrier( MPI_COMM_WORLD );
@@ -309,10 +302,18 @@ int main(int argc, char *argv[])
     }
 
 
+    printf("rows at %p points to: %p\n", (void*)&rows, (void*)rows);
     // Clean up environment
+    for (int i = 0; i < rowsperrank; i++) {
+        free(rows[i]);
+    }
+    printf("freed each row\n");
     free(rows);
+    printf("freed rows\n");
     free(rowbefore);
+    printf("freed rowbefore\n");
     free(rowafter);
+    printf("freed rowafter\n");
     MPI_Finalize();
     return 0;
 }
