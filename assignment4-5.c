@@ -58,6 +58,7 @@ void *threadcall(void *val_ptr) {
         //printf("TICK %d\n", i);
         // MPI send and receive
         if (base_thread == 0) {
+            printf("started send and received at TICK %d\n", i);
             // Recieve the row before and after
             MPI_Request recv;
             MPI_Request send;
@@ -74,6 +75,8 @@ void *threadcall(void *val_ptr) {
             MPI_Status status;
             MPI_Wait(&recv, &status);
             MPI_Wait(&send, &status);
+
+            printf("finished send and received at TICK %d\n", i);
         }
 
         // process each row belonging to this pthread
