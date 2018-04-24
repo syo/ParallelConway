@@ -59,8 +59,8 @@ void *threadcall(void *val_ptr) {
             // Recieve the row before and after
             MPI_Request recv;
             MPI_Request send;
-            int before = (mpi_myrank + mpi_commsize - 1) % gridsize;
-            int after = (mpi_myrank + 1) % gridsize;
+            int before = (mpi_myrank + mpi_commsize - 1) % mpi_commsize;
+            int after = (mpi_myrank + 1) % mpi_commsize;
             MPI_Irecv(rowbefore, gridsize, MPI_CHAR, before, 123, MPI_COMM_WORLD, &recv);
             MPI_Irecv(rowafter, gridsize, MPI_CHAR, after, 321, MPI_COMM_WORLD, &recv);
 
