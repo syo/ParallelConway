@@ -194,7 +194,7 @@ int main(int argc, char *argv[])
     }
 
     // Allocate rank's rows and ghost rows for the boundary
-    rows = calloc(rowsperrank, sizeof(char));
+    rows = calloc(rowsperrank, sizeof(char*));
     rowbefore = calloc(gridsize, sizeof(char));
     rowafter = calloc(gridsize, sizeof(char));
     for (int i = 0; i < gridsize; i++) {
