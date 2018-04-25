@@ -218,12 +218,33 @@ int main(int argc, char *argv[])
     }
 
     // Allocate rank's rows and ghost rows for the boundary
-    rows = calloc(rowsperrank, sizeof(char*));
-    rowbefore = calloc(gridsize, sizeof(char));
-    rowafter = calloc(gridsize, sizeof(char));
+    if ((rows = calloc(rowsperrank, sizeof(char*))) == NULL) {
+        fprintf(stderr, "Rank %d couldn't allocate rows\n", mpi_myrank);
+        exit(1);
+    }
+    if ((rowbefore = calloc(gridsize, sizeof(char))) == NULL) {
+        fprintf(stderr, "Rank %d couldn't allocate rowbefore\n", mpi_myrank);
+        exit(1);
+    }
+    if ((rowafter = calloc(gridsize, sizeof(char))) == NULL) {
+        fprintf(stderr, "Rank %d couldn't allocate rowbefore\n", mpi_myrank);
+        exit(1);
+    }
+    /*
     for (int i = 0; i < gridsize; i++) {
-        rows[i] = calloc(gridsize, sizeof(char));
+        if ((rows[i] = calloc(gridsize, sizeof(char))) == NULL) {
+            fprintf(stderr, "Rank %d couldn't allocate rows[%d]\n", mpi_myrank, i);
+            exit(1);
+        }
         //rows[i][gridsize] = '\0';
+    }
+    */
+    if ((rows[0] = calloc(rowsperrank * gridsize, sizeof(char))) == NULL) {
+        fprintf(stderr, "Rank %d couldn't allocate rows\n", mpi_myrank);
+        exit(1);
+    }
+    for (int i = 0; i < rowsperrank; i++) {
+        rows[i] = (*rows + i * gridsize);
     }
 
     //rows[gridsize] = '\0';
@@ -364,10 +385,13 @@ int main(int argc, char *argv[])
 
     printf("rank %d rows at %p points to: %p\n", mpi_myrank, (void*)&rows, (void*)rows);
     // Clean up environment
+    /*
     for (int i = 0; i < rowsperrank; i++) {
         //printf("trying to free row %d\n", i);
         free(rows[i]);
     }
+    */
+    free(rows[0]);
     printf("freed each row\n");
     free(rows);
     printf("freed rows\n");
