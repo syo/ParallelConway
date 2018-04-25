@@ -23,6 +23,12 @@
 /* Defines *****************************************************************/
 /***************************************************************************/
 
+/*#define BGQ 1
+#ifdef BGQ
+#include <hwi/include/bqc/A2_inlines.h>
+#else
+#define GetTimeBase MPI_Wtime
+#endif*/
 #define ALIVE 1
 #define DEAD  0
 #define THRESHOLD 25
@@ -203,19 +209,26 @@ int main(int argc, char *argv[])
         printf("starting timer\n");
         start = MPI_Wtime();
     }
+    if (mpi_myrank == 0) {
+        printf("timer started in rank 0\n");
+    }
 
     // Allocate rank's rows and ghost rows for the boundary
-    rows = calloc(rowsperrank + 1, sizeof(char*));
-    rowbefore = calloc(gridsize + 1, sizeof(char));
-    rowafter = calloc(gridsize + 1, sizeof(char));
+    rows = calloc(rowsperrank, sizeof(char*));
+    rowbefore = calloc(gridsize, sizeof(char));
+    rowafter = calloc(gridsize, sizeof(char));
     for (int i = 0; i < gridsize; i++) {
-        rows[i] = calloc(gridsize + 1, sizeof(char));
-        rows[i][gridsize] = '\0';
+        rows[i] = calloc(gridsize, sizeof(char));
+        //rows[i][gridsize] = '\0';
     }
 
     //rows[gridsize] = '\0';
-    rowafter[gridsize] = '\0';
-    rowbefore[gridsize] = '\0';
+    //rowafter[gridsize] = '\0';
+    //rowbefore[gridsize] = '\0';
+
+    if (mpi_myrank == 0) {
+        printf("allocated in rank 0\n");
+    }
 
     //printf("rows allocated, initializing\n");
     // Randomly initialize universe
@@ -228,7 +241,9 @@ int main(int argc, char *argv[])
             }
         }
     }
-    
+    if (mpi_myrank == 0) {
+        printf("initialized in rank 0\n");
+    }
     //printf("initialized\n");
 //XXX
 // Note, used the mpi_myrank to select which RNG stream to use.
@@ -256,6 +271,9 @@ int main(int argc, char *argv[])
     pthread_attr_t attr;
     pthread_attr_init(&attr);
 
+    if (mpi_myrank == 0) {
+        printf("creating threads in rank 0\n");
+    }
     // create the threads calling the threadcall function
     int i;
     for (i=0; i<num_threads; i++) {
@@ -267,6 +285,9 @@ int main(int argc, char *argv[])
     //do whatever main thread needs to do
     //printf("this is the main thread\n");
 
+    if (mpi_myrank == 0) {
+        printf("joining threads in rank 0\n");
+    }
     //wait for threads to finish and join them back in
     for (i=0; i<num_threads; i++) {
         pthread_join(p_threads[i], NULL);
@@ -284,6 +305,9 @@ int main(int argc, char *argv[])
         start = MPI_Wtime();
     }
     
+    if (mpi_myrank == 0) {
+        printf("performing io in rank 0\n");
+    }
     // Perform I/O
     MPI_File outfile;
     MPI_Status status;
