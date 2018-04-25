@@ -32,7 +32,7 @@
 #define ALIVE '1'
 #define DEAD  '0'
 #define THRESHOLD 25
-#define THREADS 1
+#define THREADS 4
 
 /***************************************************************************/
 /* Global Vars *************************************************************/
@@ -132,7 +132,7 @@ void *threadcall(void *val_ptr) {
                         neighbors += rows[cur_row + j - 1][k + 1] - '0';
                     }
                 }
-                if (j < rowsperthread) { //if this is not the last row of the thread
+                if (j < rowsperthread - 1) { //if this is not the last row of the thread
                     //check below 
                     neighbors += rows[cur_row + j + 1][k - 1] - '0';
                     neighbors += rows[cur_row + j + 1][k] - '0';
@@ -317,7 +317,7 @@ int main(int argc, char *argv[])
     MPI_Status status;
     MPI_File_open(MPI_COMM_WORLD, "output.txt", MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &outfile);
     for (int i = 0; i < rowsperrank; i++) {
-        rowtoout(i);
+        //rowtoout(i);
         MPI_File_write_at(outfile, (mpi_myrank * rowsperrank + i) * (gridsize + 1), rows[i], gridsize, MPI_CHAR, &status);
         // Add newline at the end of each line
         char newline = '\n';
