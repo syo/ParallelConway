@@ -189,7 +189,6 @@ int main(int argc, char *argv[])
 //    int i = 0;
     double start, end, comptime, iotime;
 // Example MPI startup and using CLCG4 RNG
-    //printf("running program\n");
     MPI_Init( &argc, &argv);
     MPI_Comm_size( MPI_COMM_WORLD, &mpi_commsize);
     MPI_Comm_rank( MPI_COMM_WORLD, &mpi_myrank);
@@ -230,15 +229,6 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Rank %d couldn't allocate rowbefore\n", mpi_myrank);
         exit(1);
     }
-    /*
-    for (int i = 0; i < gridsize; i++) {
-        if ((rows[i] = calloc(gridsize, sizeof(char))) == NULL) {
-            fprintf(stderr, "Rank %d couldn't allocate rows[%d]\n", mpi_myrank, i);
-            exit(1);
-        }
-        //rows[i][gridsize] = '\0';
-    }
-    */
     if ((rows[0] = calloc(rowsperrank * gridsize, sizeof(char))) == NULL) {
         fprintf(stderr, "Rank %d couldn't allocate rows\n", mpi_myrank);
         exit(1);
@@ -247,15 +237,11 @@ int main(int argc, char *argv[])
         rows[i] = (*rows + i * gridsize);
     }
 
-    //rows[gridsize] = '\0';
-    //rowafter[gridsize] = '\0';
-    //rowbefore[gridsize] = '\0';
 
     if (mpi_myrank == 0) {
         printf("allocated in rank 0\n");
     }
 
-    //printf("rows allocated, initializing\n");
     // Randomly initialize universe
     for (int i = 0; i < rowsperrank; i++) {
         for (int j = 0; j < gridsize; j++) {
@@ -269,13 +255,6 @@ int main(int argc, char *argv[])
     if (mpi_myrank == 0) {
         printf("initialized in rank 0\n");
     }
-    //printf("initialized\n");
-//XXX
-// Note, used the mpi_myrank to select which RNG stream to use.
-// You must replace mpi_myrank with the right row being used.
-// This just show you how to call the RNG.    
-    //printf("Rank %d of %d has been started and a first Random Value of %lf\n", 
-	//   mpi_myrank, mpi_commsize, GenVal(mpi_myrank));
     
     MPI_Barrier(MPI_COMM_WORLD);
     
@@ -383,22 +362,11 @@ int main(int argc, char *argv[])
     }
 
 
-    printf("rank %d rows at %p points to: %p\n", mpi_myrank, (void*)&rows, (void*)rows);
     // Clean up environment
-    /*
-    for (int i = 0; i < rowsperrank; i++) {
-        //printf("trying to free row %d\n", i);
-        free(rows[i]);
-    }
-    */
     free(rows[0]);
-    printf("freed each row\n");
     free(rows);
-    printf("freed rows\n");
     free(rowbefore);
-    printf("freed rowbefore\n");
     free(rowafter);
-    printf("freed rowafter\n");
     MPI_Finalize();
     return 0;
 }
