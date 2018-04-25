@@ -29,8 +29,8 @@
 #else
 #define GetTimeBase MPI_Wtime
 #endif*/
-#define ALIVE 1
-#define DEAD  0
+#define ALIVE '1'
+#define DEAD  '0'
 #define THRESHOLD 25
 #define THREADS 1
 
@@ -86,7 +86,7 @@ void *threadcall(void *val_ptr) {
         }
 
         pthread_barrier_wait(&mpi_io);
-        
+        //printf("did mpi io\n");
         // process each row belonging to this pthread
         // should pass in what belongs to it as an argument to threadcall
         // use modulus to calculate positions
@@ -138,8 +138,10 @@ void *threadcall(void *val_ptr) {
                     neighbors += rows[cur_row + j + 1][k] - '0';
                     neighbors += rows[cur_row + j + 1][k + 1] - '0';
                 } else { //if this is the last row of the thread
-                    if (cur_row / THREADS + 1 == rowsperthread) {//check if its the last thread of mpi rank
+                    //printf("last row of thread\n");
+                    if (cur_row / rowsperthread + 1 == THREADS) {//check if its the last thread of mpi rank
                         //ask for the ghost row info
+                        //printf("last thread of rank\n");
                         neighbors += rowafter[k - 1] - '0'; 
                         neighbors += rowafter[k] - '0'; 
                         neighbors += rowafter[k + 1] - '0'; 
@@ -150,7 +152,7 @@ void *threadcall(void *val_ptr) {
                         neighbors += rows[cur_row + j + 1][k + 1] - '0';
                     }
                 }
-                if (life_status) {
+                if (life_status == 1) {
                     //if alive
                     if (neighbors < 2 || neighbors > 3) {// if not 2 or 3 neighbors
                         rows[cur_row + j][k] = '0'; //kill it
@@ -161,6 +163,8 @@ void *threadcall(void *val_ptr) {
                         rows[cur_row + j][k] = '1'; //bring it to life
                     }
                 }
+                //if (i == 0) 
+                //    printf("updated value from -%c- to -%c-\n", life_status, rows[cur_row + j][k]);
             }
             //printf("UNLOCKED MUTEX\n");
             pthread_mutex_unlock(&gridlock);
@@ -331,7 +335,7 @@ int main(int argc, char *argv[])
     }
 
 
-    /*printf("rank %d rows at %p points to: %p\n", mpi_myrank, (void*)&rows, (void*)rows);
+    printf("rank %d rows at %p points to: %p\n", mpi_myrank, (void*)&rows, (void*)rows);
     // Clean up environment
     for (int i = 0; i < rowsperrank; i++) {
         //printf("trying to free row %d\n", i);
@@ -343,8 +347,8 @@ int main(int argc, char *argv[])
     free(rowbefore);
     printf("freed rowbefore\n");
     free(rowafter);
-    printf("freed rowafter\n");*/
-    //MPI_Finalize();
+    printf("freed rowafter\n");
+    MPI_Finalize();
     return 0;
 }
 
