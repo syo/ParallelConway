@@ -337,46 +337,27 @@ int main(int argc, char *argv[])
     // Output heatmap data to a file
     char heatmap = 1;
     if (heatmap) {
-        MPI_File heatfilel;
-        MPI_File heatfiler;
-        //if (mpi_myrank < mpi_commsize / 2) {
-            printf("opening files 1 and 2\n");
-            MPI_File_open(MPI_COMM_WORLD, "heatmap1.dat", MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &heatfilel);
-            MPI_File_open(MPI_COMM_WORLD, "heatmap2.dat", MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &heatfiler);
-            printf("opened files %p and %p\n", heatfilel, heatfiler);
-            /*
-        } else {
-            printf("opening files 3 and 4\n");
-            MPI_File_open(MPI_COMM_WORLD, "heatmap3.dat", MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &heatfilel);
-            MPI_File_open(MPI_COMM_WORLD, "heatmap4.dat", MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &heatfiler);
-            printf("opened files %p and %p\n", heatfilel, heatfiler);
-        }
-        */
-
+        MPI_File heatfile;
+        MPI_File_open(MPI_COMM_WORLD, "heatmap.dat", MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &heatfile);
 
         int heatgridsize = 1024;
         int heatrowsperrank = 1024 / mpi_commsize;
-        int linesperrank = heatgridsize * heatrowsperrank / 2;
+        int linesperrank = heatgridsize * heatrowsperrank;
         char* line = calloc(32, sizeof(char));
         for (int i = 0; i < heatrowsperrank; i++) {
-            for (int j = 0; j < heatgridsize * 2; j++) {
+            for (int j = 0; j < heatgridsize; j++) {
                 int sum = 0;
-                for (int x = 0; x < 8; x++) {
+                for (int x = 0; x < 16; x++) {
                     for (int y = 0; y < 16; y++) {
-                        sum += rows[i*8+x][j*16+y] - '0';
+                        sum += rows[i*16+x][j*16+y] - '0';
                     }
                 }
                 int numinline = sprintf(line, "%4d %4d %3d\n", (heatrowsperrank * mpi_myrank) + i, j, sum);
-                if (j < heatgridsize) {
-                    MPI_File_write_at(heatfilel, ((linesperrank * mpi_myrank) + (i * heatgridsize) + j) * numinline, line, numinline, MPI_CHAR, &status);
-                } else {
-                    MPI_File_write_at(heatfiler, ((linesperrank * mpi_myrank) + (i * heatgridsize) + (j - heatgridsize)) * numinline, line, numinline, MPI_CHAR, &status);
-                }
+                MPI_File_write_at(heatfile, ((linesperrank * mpi_myrank) + (i * heatgridsize) + j) * numinline, line, numinline, MPI_CHAR, &status);
             }
         }
         MPI_Barrier(MPI_COMM_WORLD);
-        MPI_File_close(&heatfilel);
-        MPI_File_close(&heatfiler);
+        MPI_File_close(&heatfile);
         free(line);
     }
 
