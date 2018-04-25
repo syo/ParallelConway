@@ -1,0 +1,9 @@
+set view map
+set dgrid3d
+set xrange [0:1024]
+set yrange [0:1024]
+set xtics 128
+set ytics 128
+set title "Heatmap of living cells in each 16x16 area"
+set pm3d interpolate 10, 10
+splot "heatmap.dat" using 1:2:3 with pm3d
