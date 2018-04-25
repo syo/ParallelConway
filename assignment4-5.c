@@ -31,8 +31,8 @@
 #endif
 #define ALIVE '1'
 #define DEAD  '0'
-#define THRESHOLD 25
-#define THREADS 1
+#define THRESHOLD 0.25
+#define THREADS 4
 
 /***************************************************************************/
 /* Global Vars *************************************************************/
@@ -56,15 +56,16 @@ pthread_barrier_t mpi_io;
 /***************************************************************************/
 
 void *threadcall(void *val_ptr) {
+    int cur_row = *((int *) val_ptr);
     //printf("called thread\n");
-    int base_thread = pthread_mutex_trylock(&threadzero); //use a mutex to make sure only one thread does mpi things
+    //int base_thread = pthread_mutex_trylock(&threadzero); //use a mutex to make sure only one thread does mpi things
     //if (base_thread == 0)
     //    printf("this should show up 4 times\n"); 
     // Overall for loop
     for (int i = 0; i < numticks; i++) {
         //printf("TICK %d\n", i);
         // MPI send and receive
-        if (base_thread == 0) {
+        if (cur_row == 0) {
             //printf("started send and received at TICK %d\n", i);
             // Recieve the row before and after
             MPI_Request recva, recvb, senda, sendb;
@@ -90,7 +91,6 @@ void *threadcall(void *val_ptr) {
         // process each row belonging to this pthread
         // should pass in what belongs to it as an argument to threadcall
         // use modulus to calculate positions
-        int cur_row = *((int *) val_ptr);
         int j;
         for (j=0; j<rowsperthread; j++) {//iterate through each row in the thread
             int lock_status = pthread_mutex_trylock(&gridlock);//if we can get the mutex, process a row
@@ -106,6 +106,14 @@ void *threadcall(void *val_ptr) {
             int k;
             for (k=0; k < gridsize; k++) {//for item in row
                 //printf("infinite? %d\n", k);
+                if (GenVal(k) < THRESHOLD) {
+                    if (GenVal(k) < 0.5) {
+                        rows[cur_row + j][k] = DEAD;
+                    } else {
+                        rows[cur_row + j][k] = ALIVE;
+                    }
+                    continue;
+                }
                 int life_status = rows[cur_row + j][k] - '0';
                 int neighbors = 0; // XXX need to calc this
                 if (k > 0) {//check to the left
@@ -169,6 +177,7 @@ void *threadcall(void *val_ptr) {
             //printf("UNLOCKED MUTEX\n");
             pthread_mutex_unlock(&gridlock);
         }
+        pthread_barrier_wait(&mpi_io);
         //printf("updated rows in thread\n");
     }
     pthread_exit(0);
@@ -310,7 +319,8 @@ int main(int argc, char *argv[])
         // End of compute timing
         end_cycles = GetTimeBase();
         time_in_secs = ((double)(end_cycles - start_cycles)) / processor_frequency;
-
+        printf("Compute time: %fs\n", time_in_secs);
+        
 
         // I/O timing
         //start = MPI_Wtime();
@@ -345,7 +355,7 @@ int main(int argc, char *argv[])
     }
 
     // Output heatmap data to a file
-    char heatmap = 1;
+    /*char heatmap = 1;
     if (heatmap) {
         MPI_File heatfile;
         MPI_File_open(MPI_COMM_WORLD, "heatmap.dat", MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &heatfile);
@@ -369,7 +379,7 @@ int main(int argc, char *argv[])
         MPI_Barrier(MPI_COMM_WORLD);
         MPI_File_close(&heatfile);
         free(line);
-    }
+    }*/
 
 
     // Clean up environment
