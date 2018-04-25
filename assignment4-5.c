@@ -26,14 +26,14 @@
 #define ALIVE 1
 #define DEAD  0
 #define THRESHOLD 25
-#define THREADS 4
+#define THREADS 1
 
 /***************************************************************************/
 /* Global Vars *************************************************************/
 /***************************************************************************/
 
 int gridsize = 16384;
-int numticks = 4;
+int numticks = 128;
 int mpi_myrank;
 int mpi_commsize;
 int rowsperrank;
@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
 //    int i = 0;
     double start, end, comptime, iotime;
 // Example MPI startup and using CLCG4 RNG
-    printf("running program\n");
+    //printf("running program\n");
     MPI_Init( &argc, &argv);
     MPI_Comm_size( MPI_COMM_WORLD, &mpi_commsize);
     MPI_Comm_rank( MPI_COMM_WORLD, &mpi_myrank);
@@ -217,7 +217,7 @@ int main(int argc, char *argv[])
     rowafter[gridsize] = '\0';
     rowbefore[gridsize] = '\0';
 
-    printf("rows allocated, initializing\n");
+    //printf("rows allocated, initializing\n");
     // Randomly initialize universe
     for (int i = 0; i < rowsperrank; i++) {
         for (int j = 0; j < gridsize; j++) {
@@ -229,13 +229,13 @@ int main(int argc, char *argv[])
         }
     }
     
-    printf("initialized\n");
+    //printf("initialized\n");
 //XXX
 // Note, used the mpi_myrank to select which RNG stream to use.
 // You must replace mpi_myrank with the right row being used.
 // This just show you how to call the RNG.    
-    printf("Rank %d of %d has been started and a first Random Value of %lf\n", 
-	   mpi_myrank, mpi_commsize, GenVal(mpi_myrank));
+    //printf("Rank %d of %d has been started and a first Random Value of %lf\n", 
+	//   mpi_myrank, mpi_commsize, GenVal(mpi_myrank));
     
     MPI_Barrier( MPI_COMM_WORLD );
     
