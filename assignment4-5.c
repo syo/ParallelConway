@@ -237,7 +237,7 @@ int main(int argc, char *argv[])
     printf("Rank %d of %d has been started and a first Random Value of %lf\n", 
 	   mpi_myrank, mpi_commsize, GenVal(mpi_myrank));
     
-    MPI_Barrier( MPI_COMM_WORLD );
+    MPI_Barrier(MPI_COMM_WORLD);
     
 
     /* THREAD STUFF */
@@ -273,7 +273,7 @@ int main(int argc, char *argv[])
     }
 
     // Sync after threads end
-    MPI_Barrier( MPI_COMM_WORLD );
+    MPI_Barrier(MPI_COMM_WORLD);
 
     if (mpi_myrank == 0) {
         // End of compute timing
@@ -295,7 +295,7 @@ int main(int argc, char *argv[])
         char newline = '\n';
         MPI_File_write_at(outfile, (mpi_myrank * rowsperrank + i + 1) * (gridsize + 1) - 1, &newline, 1, MPI_CHAR, &status);
     }
-    MPI_Barrier( MPI_COMM_WORLD );
+    MPI_Barrier(MPI_COMM_WORLD);
     MPI_File_close(&outfile);
 
     if (mpi_myrank == 0) {
@@ -304,6 +304,52 @@ int main(int argc, char *argv[])
         iotime = end - start;
 
         printf("Compute time: %lfs, I/O time: %lfs\n", comptime, iotime);
+    }
+
+    // Output heatmap data to a file
+    char heatmap = 1;
+    if (heatmap) {
+        MPI_File heatfilel;
+        MPI_File heatfiler;
+        //if (mpi_myrank < mpi_commsize / 2) {
+            printf("opening files 1 and 2\n");
+            MPI_File_open(MPI_COMM_WORLD, "heatmap1.dat", MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &heatfilel);
+            MPI_File_open(MPI_COMM_WORLD, "heatmap2.dat", MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &heatfiler);
+            printf("opened files %p and %p\n", heatfilel, heatfiler);
+            /*
+        } else {
+            printf("opening files 3 and 4\n");
+            MPI_File_open(MPI_COMM_WORLD, "heatmap3.dat", MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &heatfilel);
+            MPI_File_open(MPI_COMM_WORLD, "heatmap4.dat", MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &heatfiler);
+            printf("opened files %p and %p\n", heatfilel, heatfiler);
+        }
+        */
+
+
+        int heatgridsize = 1024;
+        int heatrowsperrank = 1024 / mpi_commsize;
+        int linesperrank = heatgridsize * heatrowsperrank / 2;
+        char* line = calloc(32, sizeof(char));
+        for (int i = 0; i < heatrowsperrank; i++) {
+            for (int j = 0; j < heatgridsize * 2; j++) {
+                int sum = 0;
+                for (int x = 0; x < 8; x++) {
+                    for (int y = 0; y < 16; y++) {
+                        sum += rows[i*8+x][j*16+y] - '0';
+                    }
+                }
+                int numinline = sprintf(line, "%4d %4d %3d\n", (heatrowsperrank * mpi_myrank) + i, j, sum);
+                if (j < heatgridsize) {
+                    MPI_File_write_at(heatfilel, ((linesperrank * mpi_myrank) + (i * heatgridsize) + j) * numinline, line, numinline, MPI_CHAR, &status);
+                } else {
+                    MPI_File_write_at(heatfiler, ((linesperrank * mpi_myrank) + (i * heatgridsize) + (j - heatgridsize)) * numinline, line, numinline, MPI_CHAR, &status);
+                }
+            }
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_File_close(&heatfilel);
+        MPI_File_close(&heatfiler);
+        free(line);
     }
 
 
