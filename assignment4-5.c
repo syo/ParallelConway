@@ -23,8 +23,14 @@
 /* Defines *****************************************************************/
 /***************************************************************************/
 
-#define ALIVE 1
-#define DEAD  0
+/*#define BGQ 1
+#ifdef BGQ
+#include <hwi/include/bqc/A2_inlines.h>
+#else
+#define GetTimeBase MPI_Wtime
+#endif*/
+#define ALIVE '1'
+#define DEAD  '0'
 #define THRESHOLD 25
 #define THREADS 4
 
@@ -33,7 +39,7 @@
 /***************************************************************************/
 
 int gridsize = 16384;
-int numticks = 4;
+int numticks = 128;
 int mpi_myrank;
 int mpi_commsize;
 int rowsperrank;
@@ -80,7 +86,7 @@ void *threadcall(void *val_ptr) {
         }
 
         pthread_barrier_wait(&mpi_io);
-        
+        //printf("did mpi io\n");
         // process each row belonging to this pthread
         // should pass in what belongs to it as an argument to threadcall
         // use modulus to calculate positions
@@ -126,14 +132,16 @@ void *threadcall(void *val_ptr) {
                         neighbors += rows[cur_row + j - 1][k + 1] - '0';
                     }
                 }
-                if (j < rowsperthread) { //if this is not the last row of the thread
+                if (j < rowsperthread - 1) { //if this is not the last row of the thread
                     //check below 
                     neighbors += rows[cur_row + j + 1][k - 1] - '0';
                     neighbors += rows[cur_row + j + 1][k] - '0';
                     neighbors += rows[cur_row + j + 1][k + 1] - '0';
                 } else { //if this is the last row of the thread
-                    if (cur_row / THREADS + 1 == rowsperthread) {//check if its the last thread of mpi rank
+                    //printf("last row of thread\n");
+                    if (cur_row / rowsperthread + 1 == THREADS) {//check if its the last thread of mpi rank
                         //ask for the ghost row info
+                        //printf("last thread of rank\n");
                         neighbors += rowafter[k - 1] - '0'; 
                         neighbors += rowafter[k] - '0'; 
                         neighbors += rowafter[k + 1] - '0'; 
@@ -144,7 +152,7 @@ void *threadcall(void *val_ptr) {
                         neighbors += rows[cur_row + j + 1][k + 1] - '0';
                     }
                 }
-                if (life_status) {
+                if (life_status == 1) {
                     //if alive
                     if (neighbors < 2 || neighbors > 3) {// if not 2 or 3 neighbors
                         rows[cur_row + j][k] = '0'; //kill it
@@ -155,6 +163,8 @@ void *threadcall(void *val_ptr) {
                         rows[cur_row + j][k] = '1'; //bring it to life
                     }
                 }
+                //if (i == 0) 
+                //    printf("updated value from -%c- to -%c-\n", life_status, rows[cur_row + j][k]);
             }
             //printf("UNLOCKED MUTEX\n");
             pthread_mutex_unlock(&gridlock);
@@ -179,7 +189,7 @@ int main(int argc, char *argv[])
 //    int i = 0;
     double start, end, comptime, iotime;
 // Example MPI startup and using CLCG4 RNG
-    printf("running program\n");
+    //printf("running program\n");
     MPI_Init( &argc, &argv);
     MPI_Comm_size( MPI_COMM_WORLD, &mpi_commsize);
     MPI_Comm_rank( MPI_COMM_WORLD, &mpi_myrank);
@@ -203,21 +213,28 @@ int main(int argc, char *argv[])
         printf("starting timer\n");
         start = MPI_Wtime();
     }
+    if (mpi_myrank == 0) {
+        printf("timer started in rank 0\n");
+    }
 
     // Allocate rank's rows and ghost rows for the boundary
-    rows = calloc(rowsperrank + 1, sizeof(char*));
-    rowbefore = calloc(gridsize + 1, sizeof(char));
-    rowafter = calloc(gridsize + 1, sizeof(char));
+    rows = calloc(rowsperrank, sizeof(char*));
+    rowbefore = calloc(gridsize, sizeof(char));
+    rowafter = calloc(gridsize, sizeof(char));
     for (int i = 0; i < gridsize; i++) {
-        rows[i] = calloc(gridsize + 1, sizeof(char));
-        rows[i][gridsize] = '\0';
+        rows[i] = calloc(gridsize, sizeof(char));
+        //rows[i][gridsize] = '\0';
     }
 
     //rows[gridsize] = '\0';
-    rowafter[gridsize] = '\0';
-    rowbefore[gridsize] = '\0';
+    //rowafter[gridsize] = '\0';
+    //rowbefore[gridsize] = '\0';
 
-    printf("rows allocated, initializing\n");
+    if (mpi_myrank == 0) {
+        printf("allocated in rank 0\n");
+    }
+
+    //printf("rows allocated, initializing\n");
     // Randomly initialize universe
     for (int i = 0; i < rowsperrank; i++) {
         for (int j = 0; j < gridsize; j++) {
@@ -228,14 +245,16 @@ int main(int argc, char *argv[])
             }
         }
     }
-    
-    printf("initialized\n");
+    if (mpi_myrank == 0) {
+        printf("initialized in rank 0\n");
+    }
+    //printf("initialized\n");
 //XXX
 // Note, used the mpi_myrank to select which RNG stream to use.
 // You must replace mpi_myrank with the right row being used.
 // This just show you how to call the RNG.    
-    printf("Rank %d of %d has been started and a first Random Value of %lf\n", 
-	   mpi_myrank, mpi_commsize, GenVal(mpi_myrank));
+    //printf("Rank %d of %d has been started and a first Random Value of %lf\n", 
+	//   mpi_myrank, mpi_commsize, GenVal(mpi_myrank));
     
     MPI_Barrier(MPI_COMM_WORLD);
     
@@ -256,6 +275,9 @@ int main(int argc, char *argv[])
     pthread_attr_t attr;
     pthread_attr_init(&attr);
 
+    if (mpi_myrank == 0) {
+        printf("creating threads in rank 0\n");
+    }
     // create the threads calling the threadcall function
     int i;
     for (i=0; i<num_threads; i++) {
@@ -267,6 +289,9 @@ int main(int argc, char *argv[])
     //do whatever main thread needs to do
     //printf("this is the main thread\n");
 
+    if (mpi_myrank == 0) {
+        printf("joining threads in rank 0\n");
+    }
     //wait for threads to finish and join them back in
     for (i=0; i<num_threads; i++) {
         pthread_join(p_threads[i], NULL);
@@ -284,12 +309,15 @@ int main(int argc, char *argv[])
         start = MPI_Wtime();
     }
     
+    if (mpi_myrank == 0) {
+        printf("performing io in rank 0\n");
+    }
     // Perform I/O
     MPI_File outfile;
     MPI_Status status;
     MPI_File_open(MPI_COMM_WORLD, "output.txt", MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &outfile);
     for (int i = 0; i < rowsperrank; i++) {
-        rowtoout(i);
+        //rowtoout(i);
         MPI_File_write_at(outfile, (mpi_myrank * rowsperrank + i) * (gridsize + 1), rows[i], gridsize, MPI_CHAR, &status);
         // Add newline at the end of each line
         char newline = '\n';
@@ -353,7 +381,7 @@ int main(int argc, char *argv[])
     }
 
 
-    /*printf("rank %d rows at %p points to: %p\n", mpi_myrank, (void*)&rows, (void*)rows);
+    printf("rank %d rows at %p points to: %p\n", mpi_myrank, (void*)&rows, (void*)rows);
     // Clean up environment
     for (int i = 0; i < rowsperrank; i++) {
         //printf("trying to free row %d\n", i);
@@ -365,8 +393,8 @@ int main(int argc, char *argv[])
     free(rowbefore);
     printf("freed rowbefore\n");
     free(rowafter);
-    printf("freed rowafter\n");*/
-    //MPI_Finalize();
+    printf("freed rowafter\n");
+    MPI_Finalize();
     return 0;
 }
 
