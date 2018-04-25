@@ -23,16 +23,16 @@
 /* Defines *****************************************************************/
 /***************************************************************************/
 
-/*#define BGQ 1
+#define BGQ 1
 #ifdef BGQ
 #include <hwi/include/bqc/A2_inlines.h>
 #else
 #define GetTimeBase MPI_Wtime
-#endif*/
+#endif
 #define ALIVE '1'
 #define DEAD  '0'
 #define THRESHOLD 25
-#define THREADS 4
+#define THREADS 1
 
 /***************************************************************************/
 /* Global Vars *************************************************************/
@@ -188,6 +188,11 @@ int main(int argc, char *argv[])
 {
 //    int i = 0;
     double start, end, comptime, iotime;
+    double time_in_secs = 0;
+    double io_in_secs = 0;
+    double processor_frequency = 1600000000.0;
+    unsigned long long start_cycles = 0;
+    unsigned long long end_cycles = 0;
 // Example MPI startup and using CLCG4 RNG
     MPI_Init( &argc, &argv);
     MPI_Comm_size( MPI_COMM_WORLD, &mpi_commsize);
@@ -210,7 +215,8 @@ int main(int argc, char *argv[])
     // Start timing
     if (mpi_myrank == 0) {
         printf("starting timer\n");
-        start = MPI_Wtime();
+        //start = MPI_Wtime();
+        start_cycles = GetTimeBase();
     }
     if (mpi_myrank == 0) {
         printf("timer started in rank 0\n");
@@ -302,11 +308,13 @@ int main(int argc, char *argv[])
 
     if (mpi_myrank == 0) {
         // End of compute timing
-        end = MPI_Wtime();
-        comptime = end - start;
+        end_cycles = GetTimeBase();
+        time_in_secs = ((double)(end_cycles - start_cycles)) / processor_frequency;
+
 
         // I/O timing
-        start = MPI_Wtime();
+        //start = MPI_Wtime();
+        start_cycles = GetTimeBase();
     }
     
     if (mpi_myrank == 0) {
@@ -328,10 +336,12 @@ int main(int argc, char *argv[])
 
     if (mpi_myrank == 0) {
         // End of I/O timing
-        end = MPI_Wtime();
-        iotime = end - start;
-
-        printf("Compute time: %lfs, I/O time: %lfs\n", comptime, iotime);
+        //end = MPI_Wtime();
+        //iotime = end - start;
+        end_cycles = GetTimeBase();
+        io_in_secs = ((double) (end_cycles - start_cycles)) / processor_frequency;
+        printf("trying to print compute time:\n");
+        printf("Compute time: %lfs, I/O time: %lfs\n", time_in_secs, io_in_secs);
     }
 
     // Output heatmap data to a file
